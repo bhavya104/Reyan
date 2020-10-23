@@ -6,6 +6,9 @@ import com.islamversity.core.mvi.BaseState
 import com.islamversity.core.mvi.MviProcessor
 import com.islamversity.core.notOfType
 import com.islamversity.core.ofType
+import com.islamversity.surah.settings.SurahSettingsIntent
+import com.islamversity.surah.settings.SurahSettingsResult
+import com.islamversity.surah.settings.SurahSettingsState
 import kotlinx.coroutines.flow.take
 
 class SurahPresenter(
@@ -21,6 +24,12 @@ class SurahPresenter(
         },
         {
             notOfType(SurahIntent.Initial::class)
+        },
+        {
+            ofType<SurahIntent.SettingsInitial>().take(1)
+        },
+        {
+            notOfType(SurahIntent.SettingsInitial::class)
         }
     )
 
@@ -47,5 +56,32 @@ class SurahPresenter(
                 preState.copy(
                     scrollToAya = ScrollToAya(result.id, result.orderID, result.position)
                 )
+
+            is SurahResult.SettingsSurahNameCalligraphies ->
+                preState.copy(settingsState = SurahSettingsState(surahNameCalligraphies = result.list))
+            is SurahResult.SettingsAyaCalligraphies ->
+                    preState.copy(settingsState = SurahSettingsState(ayaCalligraphies = result.list))
+            is SurahResult.SettingsQuranFontSize ->
+                preState.copy(
+                    settingsState = SurahSettingsState(quranTextFontSize = result.fontSize)
+                )
+            is SurahResult.SettingsTranslateFontSize ->
+                preState.copy(
+                    settingsState = SurahSettingsState(translateTextFontSize = result.fontSize)
+                )
+            is SurahResult.SettingsSurahCalligraphy ->
+                preState.copy(
+                    settingsState = SurahSettingsState(selectedSurahNameCalligraphy = result.calligraphy)
+                )
+            is SurahResult.SettingsFirstAyaTranslationCalligraphy ->
+                preState.copy(
+                    settingsState = SurahSettingsState(selectedAyaCalligraphy = result.calligraphy)
+                )
+
+            is SurahResult.SettingsOpen ->
+                preState.copy(
+                    settingsState = SurahSettingsState(showSettings = true)
+                )
+
         }
 }

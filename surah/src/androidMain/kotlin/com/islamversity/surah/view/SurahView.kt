@@ -4,10 +4,6 @@ import android.content.Context
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.ViewGroup
-import androidx.recyclerview.widget.RecyclerView
-import com.airbnb.epoxy.DiffResult
-import com.airbnb.epoxy.EpoxyController
-import com.airbnb.epoxy.OnModelBuildFinishedListener
 import com.islamversity.base.CoroutineView
 import com.islamversity.base.ext.setHidable
 import com.islamversity.core.mvi.MviPresenter
@@ -21,14 +17,27 @@ import com.islamversity.surah.di.DaggerSurahComponent
 import com.islamversity.surah.model.AyaUIModel
 import com.islamversity.surah.model.SurahHeaderUIModel
 import com.islamversity.surah.view.settings.SurahSettingsView
+import com.islamversity.surah.view.utils.BuildFinishedScroller
+import com.islamversity.surah.view.utils.OnSettings
+import kotlinx.coroutines.channels.BroadcastChannel
+import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.asFlow
 import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.flow.merge
 import javax.inject.Inject
 
 class SurahView(
     bundle: Bundle
 ) : CoroutineView<ViewSurahBinding, SurahState, SurahIntent>(bundle) {
 
+    private val settingsChannel = BroadcastChannel<SurahIntent>(Channel.BUFFERED)
+    private var settingsDialog: SurahSettingsView? = null
+    private val onSettings = object : OnSettings {
+        override fun offer(settingsIntent: SurahIntent) {
+            settingsChannel.offer(settingsIntent)
+        }
+    }
     private val surahLocal: SurahLocalModel =
         bundle
             .getString(SurahLocalModel.EXTRA_SURAH_DETAIL)!!
@@ -38,6 +47,7 @@ class SurahView(
 
     @Inject
     override lateinit var presenter: MviPresenter<SurahIntent, SurahState>
+
 
     override fun bindView(inflater: LayoutInflater, container: ViewGroup): ViewSurahBinding =
         ViewSurahBinding.inflate(inflater, container, false)
@@ -55,22 +65,23 @@ class SurahView(
         binding.ivBack.setOnClickListener { router.handleBack() }
         binding.fabUp.setOnClickListener { binding.ayaList.scrollToPosition(0) }
         binding.ayaList.setHidable(binding.fabUp, binding.tvSurahName,)
-        binding.settings.setOnClickListener { openSettingsDialog(it.context) }
+        binding.settings.setOnClickListener { settingsChannel.offer(SurahIntent.OpenSettings) }
         binding.tvSurahName.text = surahLocal.surahName
     }
 
     private fun openSettingsDialog(context: Context) {
-        val dialog = SurahSettingsView(context)
-        dialog.show()
+        settingsDialog = SurahSettingsView(context, onSettings)
+        settingsDialog?.show()
+        settingsDialog?.setOnCancelListener { settingsDialog = null }
     }
 
     override fun intents(): Flow<SurahIntent> =
-        flowOf(
-            SurahIntent.Initial(
-                surahLocal.surahID,
-                surahLocal.startingAyaOrder,
-            )
+        listOf(
+            flowOf(
+                SurahIntent.Initial(surahLocal.surahID, surahLocal.startingAyaOrder)
+            ), settingsChannel.asFlow()
         )
+            .merge()
 
     override fun render(state: SurahState) {
         renderLoading(state.base)
@@ -109,18 +120,17 @@ class SurahView(
                 )
             }
         }
+
+        if (state.settingsState != null) {
+            if (state.settingsState.showSettings && (settingsDialog == null || (settingsDialog != null && !settingsDialog!!.isShowing))) {
+                openSettingsDialog(binding.ayaList.context)
+                settingsChannel.offer(SurahIntent.SettingsInitial)
+            } else if (settingsDialog != null && settingsDialog!!.isShowing && !settingsDialog!!.isInitiated) {
+                settingsDialog!!.render(state)
+            }
+        }
+
     }
 }
 
-class BuildFinishedScroller(
-    private val scrollTo: Int,
-    private val controller: EpoxyController,
-    private val view: RecyclerView,
-) : OnModelBuildFinishedListener {
 
-    override fun onModelBuildFinished(result: DiffResult) {
-        view.scrollToPosition(scrollTo)
-        controller.removeModelBuildListener(this)
-    }
-
-}

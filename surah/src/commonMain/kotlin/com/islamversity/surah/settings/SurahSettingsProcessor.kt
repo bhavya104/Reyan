@@ -3,11 +3,12 @@ package com.islamversity.surah.settings
 import com.islamversity.core.FlowBlock
 import com.islamversity.core.Mapper
 import com.islamversity.core.listMap
-import com.islamversity.core.mvi.BaseProcessor
 import com.islamversity.core.ofType
 import com.islamversity.domain.model.*
 import com.islamversity.domain.repo.CalligraphyRepo
 import com.islamversity.domain.repo.SettingRepo
+import com.islamversity.surah.SurahIntent
+import com.islamversity.surah.SurahResult
 import com.islamversity.surah.model.CalligraphyUIModel
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flatMapMerge
@@ -18,31 +19,15 @@ class SurahSettingsProcessor(
     settingsRepo: SettingRepo,
     calligraphyRepo: CalligraphyRepo,
     uiMapper: Mapper<Calligraphy, CalligraphyUIModel>
-) : BaseProcessor<SurahSettingsIntent, SurahSettingsResult>() {
+) {
 
-    override fun transformers(): List<FlowBlock<SurahSettingsIntent, SurahSettingsResult>> = listOf(
-        getSurahNameCalligraphies,
-        getAllAyaCalligraphies,
-
-        getQuranFontSize,
-        getTranslateFontSize,
-
-        getCurrentSurahNameCalligraphy,
-        getCurrentAyaCalligraphy,
-
-        changeSurahNameCalligraphy,
-        changeAyaCalligraphy,
-        setQuranFontSize,
-        setTranslateFontSize
-    )
-
-    private val getSurahNameCalligraphies: FlowBlock<SurahSettingsIntent, SurahSettingsResult> = {
-        ofType<SurahSettingsIntent.Initial>()
+    val getSurahNameCalligraphies: FlowBlock<SurahIntent, SurahResult> = {
+        ofType<SurahIntent.SettingsInitial>()
             .flatMapMerge {
                 calligraphyRepo.getAllSurahNameCalligraphies()
             }
             .map {
-                SurahSettingsResult.SurahNameCalligraphies(
+                SurahResult.SettingsSurahNameCalligraphies(
                     it.map {
                         uiMapper.map(it)
                     }
@@ -50,58 +35,57 @@ class SurahSettingsProcessor(
             }
     }
 
-    private val getAllAyaCalligraphies: FlowBlock<SurahSettingsIntent, SurahSettingsResult> = {
-        ofType<SurahSettingsIntent.Initial>()
+    val getAllAyaCalligraphies: FlowBlock<SurahIntent, SurahResult> = {
+        ofType<SurahIntent.SettingsInitial>()
             .flatMapMerge {
                 calligraphyRepo.getAllAyaCalligraphies()
             }
             .map {
-                SurahSettingsResult.AyaCalligraphies(
+                SurahResult.SettingsAyaCalligraphies(
                     uiMapper.listMap(it)
                 )
             }
     }
 
-    private val getQuranFontSize: FlowBlock<SurahSettingsIntent, SurahSettingsResult> = {
-        ofType<SurahSettingsIntent.Initial>()
+    val getQuranFontSize: FlowBlock<SurahIntent, SurahResult> = {
+        ofType<SurahIntent.SettingsInitial>()
             .flatMapMerge {
                 settingsRepo.getAyaMainFontSize()
             }
             .map {
-                SurahSettingsResult.QuranFontSize(it.size)
+                SurahResult.SettingsQuranFontSize(it.size)
             }
     }
 
-
-    private val getTranslateFontSize: FlowBlock<SurahSettingsIntent, SurahSettingsResult> = {
-        ofType<SurahSettingsIntent.Initial>()
+    val getTranslateFontSize: FlowBlock<SurahIntent, SurahResult> = {
+        ofType<SurahIntent.SettingsInitial>()
             .flatMapMerge {
                 settingsRepo.getAyaTranslateFontSize()
             }
             .map {
-                SurahSettingsResult.TranslateFontSize(it.size)
+                SurahResult.SettingsTranslateFontSize(it.size)
             }
     }
 
-    private val getCurrentSurahNameCalligraphy: FlowBlock<SurahSettingsIntent, SurahSettingsResult> = {
-        ofType<SurahSettingsIntent.Initial>()
+    val getCurrentSurahNameCalligraphy: FlowBlock<SurahIntent, SurahResult> = {
+        ofType<SurahIntent.SettingsInitial>()
             .flatMapMerge {
                 settingsRepo.getSecondarySurahNameCalligraphy()
             }
             .map {
-                SurahSettingsResult.SurahCalligraphy(
+                SurahResult.SettingsSurahCalligraphy(
                     uiMapper.map(it)
                 )
             }
     }
 
-    private val getCurrentAyaCalligraphy: FlowBlock<SurahSettingsIntent, SurahSettingsResult> = {
-        ofType<SurahSettingsIntent.Initial>()
+    val getCurrentAyaCalligraphy: FlowBlock<SurahIntent, SurahResult> = {
+        ofType<SurahIntent.SettingsInitial>()
             .flatMapMerge {
                 settingsRepo.getFirstAyaTranslationCalligraphy()
             }
             .map {
-                SurahSettingsResult.FirstAyaTranslationCalligraphy(
+                SurahResult.SettingsFirstAyaTranslationCalligraphy(
                     if (it is SettingsCalligraphy.Selected) {
                         uiMapper.map(it.cal)
                     } else {
@@ -111,8 +95,8 @@ class SurahSettingsProcessor(
             }
     }
 
-    private val changeAyaCalligraphy: Flow<SurahSettingsIntent>.() -> Flow<SurahSettingsResult> = {
-        ofType<SurahSettingsIntent.NewAyaCalligraphy>()
+    val changeAyaCalligraphy: Flow<SurahIntent>.() -> Flow<SurahResult> = {
+        ofType<SurahIntent.SettingsNewAyaCalligraphy>()
             .flatMapMerge {
                 calligraphyRepo.getCalligraphy(CalligraphyId(it.language.id))
                     .map {
@@ -121,12 +105,12 @@ class SurahSettingsProcessor(
             }
             .transform {
                 settingsRepo.setFirstAyaTranslationCalligraphy(it)
-                emit(SurahSettingsResult.FirstAyaTranslationCalligraphy(uiMapper.map(it)))
+                emit(SurahResult.SettingsFirstAyaTranslationCalligraphy(uiMapper.map(it)))
             }
     }
 
-    private val changeSurahNameCalligraphy: Flow<SurahSettingsIntent>.() -> Flow<SurahSettingsResult> = {
-        ofType<SurahSettingsIntent.NewSurahNameCalligraphySelected>()
+    val changeSurahNameCalligraphy: Flow<SurahIntent>.() -> Flow<SurahResult> = {
+        ofType<SurahIntent.SettingsNewSurahNameCalligraphySelected>()
             .flatMapMerge {
                 calligraphyRepo.getCalligraphy(CalligraphyId(it.calligraphy.id))
                     .map {
@@ -135,23 +119,30 @@ class SurahSettingsProcessor(
             }
             .transform {
                 settingsRepo.setSecondarySurahNameCalligraphy(it)
-                emit(SurahSettingsResult.SurahCalligraphy(uiMapper.map(it)))
+                emit(SurahResult.SettingsSurahCalligraphy(uiMapper.map(it)))
             }
     }
 
-    private val setQuranFontSize: Flow<SurahSettingsIntent>.() -> Flow<SurahSettingsResult> = {
-        ofType<SurahSettingsIntent.ChangeQuranFontSize>()
+    val setQuranFontSize: Flow<SurahIntent>.() -> Flow<SurahResult> = {
+        ofType<SurahIntent.SettingsChangeQuranFontSize>()
             .transform {
                 settingsRepo.setAyaMainFontSize(QuranReadFontSize(it.size))
-                emit(SurahSettingsResult.QuranFontSize(it.size))
+                emit(SurahResult.SettingsQuranFontSize(it.size))
             }
     }
 
-    private val setTranslateFontSize: Flow<SurahSettingsIntent>.() -> Flow<SurahSettingsResult> = {
-        ofType<SurahSettingsIntent.ChangeTranslateFontSize>()
+    val setTranslateFontSize: Flow<SurahIntent>.() -> Flow<SurahResult> = {
+        ofType<SurahIntent.SettingsChangeTranslateFontSize>()
             .transform {
                 settingsRepo.setAyaTranslateFontSize(TranslateReadFontSize(it.size))
-                emit(SurahSettingsResult.TranslateFontSize(it.size))
+                emit(SurahResult.SettingsTranslateFontSize(it.size))
+            }
+    }
+
+    val openSettings: Flow<SurahIntent>.() -> Flow<SurahResult> = {
+        ofType<SurahIntent.OpenSettings>()
+            .transform {
+                emit(SurahResult.SettingsOpen(showSettings = true))
             }
     }
 }

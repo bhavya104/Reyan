@@ -12,6 +12,7 @@ import com.islamversity.navigation.Navigator
 import com.islamversity.surah.model.AyaUIModel
 import com.islamversity.surah.model.SurahHeaderUIModel
 import com.islamversity.surah.model.UIItem
+import com.islamversity.surah.settings.SurahSettingsProcessor
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.*
 
@@ -22,10 +23,22 @@ class SurahProcessor(
     private val surahRepoHeaderMapper: Mapper<SurahRepoModel, SurahHeaderUIModel>,
     private val settingRepo: SettingRepo,
     private val surahUsecase: GetSurahUsecase,
+    private val settingsProcessor: SurahSettingsProcessor
 ) : BaseProcessor<SurahIntent, SurahResult>() {
 
     override fun transformers(): List<FlowBlock<SurahIntent, SurahResult>> = listOf(
-        processInitialFetch
+        processInitialFetch,
+        settingsProcessor.getSurahNameCalligraphies,
+        settingsProcessor.getAllAyaCalligraphies,
+        settingsProcessor.getQuranFontSize,
+        settingsProcessor.getTranslateFontSize,
+        settingsProcessor.getCurrentSurahNameCalligraphy,
+        settingsProcessor.getCurrentAyaCalligraphy,
+        settingsProcessor.changeSurahNameCalligraphy,
+        settingsProcessor.changeAyaCalligraphy,
+        settingsProcessor.setQuranFontSize,
+        settingsProcessor.setTranslateFontSize,
+        settingsProcessor.openSettings
     )
 
     private val processInitialFetch: FlowBlock<SurahIntent, SurahResult> = {
